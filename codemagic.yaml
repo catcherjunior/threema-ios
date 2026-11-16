@@ -8,12 +8,12 @@ workflows:
       - name: Resolve SPM deps
         script: |
           xcodebuild -resolvePackageDependencies \
-            -workspace Threema/Threema.xcworkspace \
+            -project Threema.xcodeproj \
             -scheme Threema
       - name: Build unsigned archive
         script: |
           xcodebuild archive \
-            -workspace Threema/Threema.xcworkspace \
+            -project Threema.xcodeproj \
             -scheme Threema \
             -configuration Release \
             -archivePath /tmp/Threema.xcarchive \
