@@ -5,16 +5,15 @@ workflows:
     environment:
       xcode: latest
     scripts:
-      - name: Install mise
+      - name: Install deps
         script: |
-          brew install mise
-          eval "$(mise activate bash)"
-          echo 'eval "$(mise activate bash)"' >> ~/.bashrc
-
-      - name: Install mise tools + build rust deps
-        script: |
+          brew install mise protobuf
           eval "$(mise activate bash)"
           mise install
+
+      - name: Build rust deps
+        script: |
+          eval "$(mise activate bash)"
           mise run dependencies
 
       - name: Download WebRTC
