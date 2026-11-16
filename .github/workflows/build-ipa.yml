@@ -1,0 +1,54 @@
+# .github/workflows/build-ipa.yml
+name: Build IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+
+      - name: Install dependencies
+        run: |
+          cd Threema
+          # SPM resolves automatically, just resolve explicitly
+          xcodebuild -resolvePackageDependencies \
+            -workspace Threema.xcworkspace \
+            -scheme Threema
+
+      - name: Build unsigned IPA
+        run: |
+          xcodebuild archive \
+            -workspace Threema/Threema.xcworkspace \
+            -scheme Threema \
+            -configuration Release \
+            -archivePath $RUNNER_TEMP/Threema.xcarchive \
+            -destination "generic/platform=iOS" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            PROVISIONING_PROFILE_SPECIFIER=""
+
+      - name: Package IPA
+        run: |
+          mkdir -p $RUNNER_TEMP/Payload
+          cp -r $RUNNER_TEMP/Threema.xcarchive/Products/Applications/Threema.app \
+            $RUNNER_TEMP/Payload/
+          cd $RUNNER_TEMP
+          zip -r Threema-unsigned.ipa Payload/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Threema-unsigned
+          path: $RUNNER_TEMP/Threema-unsigned.ipa
+          retention-days: 5
