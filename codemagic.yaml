@@ -1,15 +1,32 @@
 workflows:
   ios-unsigned:
     name: Threema Unsigned IPA
-    max_build_duration: 60
+    max_build_duration: 120
     environment:
       xcode: latest
     scripts:
+      - name: Install mise
+        script: |
+          brew install mise
+          eval "$(mise activate bash)"
+          echo 'eval "$(mise activate bash)"' >> ~/.bashrc
+
+      - name: Install mise tools + build rust deps
+        script: |
+          eval "$(mise activate bash)"
+          mise install
+          mise run dependencies
+
+      - name: Download WebRTC
+        script: |
+          bash scripts/build.sh --dependencies .
+
       - name: Resolve SPM deps
         script: |
           xcodebuild -resolvePackageDependencies \
             -project Threema.xcodeproj \
             -scheme Threema
+
       - name: Build unsigned archive
         script: |
           xcodebuild archive \
@@ -21,10 +38,12 @@ workflows:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO
+
       - name: Package IPA
         script: |
           mkdir -p /tmp/Payload
           cp -r /tmp/Threema.xcarchive/Products/Applications/Threema.app /tmp/Payload/
           cd /tmp && zip -r Threema-unsigned.ipa Payload/
+
     artifacts:
       - /tmp/Threema-unsigned.ipa
