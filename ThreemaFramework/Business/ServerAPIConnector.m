@@ -49,13 +49,17 @@ static NSString *redactedPersonalInfo(NSString *value) {
                               @"deviceId": [[[UIDevice currentDevice] identifierForVendor] UUIDString]
                               }];
     
-    // Add App Store receipt if available (but not for Work)
+   // Add App Store receipt if available (but not for Work)
     NSURL *receiptUrl = [[NSBundle mainBundle] appStoreReceiptURL];
-    if (receiptUrl && [[FileUtility new] fileExistsAt:receiptUrl] && !TargetManagerObjC.isBusinessApp) {
-        NSData *receiptData = [NSData dataWithContentsOfURL:receiptUrl];
-        if (receiptData) {
-            request[@"appStoreReceipt"] = [receiptData base64EncodedStringWithOptions:0];
+    if (!TargetManagerObjC.isBusinessApp) {
+        NSData *receiptData = nil;
+        if (receiptUrl && [[FileUtility new] fileExistsAt:receiptUrl]) {
+            receiptData = [NSData dataWithContentsOfURL:receiptUrl];
         }
+        if (!receiptData) {
+            receiptData = [NSData data];
+        }
+        request[@"appStoreReceipt"] = [receiptData base64EncodedStringWithOptions:0];
     }
     
     // Add Work license if available
