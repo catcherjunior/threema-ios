@@ -31,12 +31,13 @@ workflows:
           xcodebuild archive \
             -project Threema.xcodeproj \
             -scheme Threema \
-            -configuration Release \
+            -configuration Debug \
             -archivePath /tmp/Threema.xcarchive \
             -destination "generic/platform=iOS" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_REQUIRED=NO \
+            SWIFT_ENABLE_EXPLICIT_MODULES=YES
 
       - name: Package IPA
         script: |
