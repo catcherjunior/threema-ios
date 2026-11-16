@@ -1,0 +1,30 @@
+workflows:
+  ios-unsigned:
+    name: Threema Unsigned IPA
+    max_build_duration: 60
+    environment:
+      xcode: latest
+    scripts:
+      - name: Resolve SPM deps
+        script: |
+          xcodebuild -resolvePackageDependencies \
+            -workspace Threema/Threema.xcworkspace \
+            -scheme Threema
+      - name: Build unsigned archive
+        script: |
+          xcodebuild archive \
+            -workspace Threema/Threema.xcworkspace \
+            -scheme Threema \
+            -configuration Release \
+            -archivePath /tmp/Threema.xcarchive \
+            -destination "generic/platform=iOS" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+      - name: Package IPA
+        script: |
+          mkdir -p /tmp/Payload
+          cp -r /tmp/Threema.xcarchive/Products/Applications/Threema.app /tmp/Payload/
+          cd /tmp && zip -r Threema-unsigned.ipa Payload/
+    artifacts:
+      - /tmp/Threema-unsigned.ipa
