@@ -158,16 +158,15 @@
    /* Check for "error" key in dictionary - if so, don't call onCompletion */
 if ([jsonResult isKindOfClass:[NSDictionary class]]) {
     NSDictionary *jsonDict = (NSDictionary*)jsonResult;
-    NSString *errorStr = [jsonDict objectForKey:@"error"];
-    if (errorStr != nil) {
-        // Bypass Threema server-side receipt/purchase errors (sideload bypass)
-        if ([errorStr hasPrefix:@"D-"]) {
-            DDLogWarn(@"Sideload bypass: ignoring server error: %@", errorStr);
-        } else {
-            onError([ThreemaError threemaError:errorStr]);
-            return;
+           NSString *errorStr = [jsonDict objectForKey:@"error"];
+        if (errorStr != nil) {
+            if ([errorStr hasPrefix:@"D-"]) {
+                DDLogWarn(@"Sideload bypass: ignoring server error: %@", errorStr);
+            } else {
+                onError([ThreemaError threemaError:errorStr]);
+                return;
+            }
         }
-    }
 }
 
     onCompletion(jsonResult);
