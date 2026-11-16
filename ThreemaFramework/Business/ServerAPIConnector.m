@@ -71,13 +71,18 @@ static NSString *redactedPersonalInfo(NSString *value) {
     }
     
     [self sendSignedRequestPhase1:request toApiPath:apiPath onCompletion:^(NSDictionary *response) {
-        [self sendSignedRequestPhase2:request toApiPath:apiPath phase1Response:response forStore:identityStore onCompletion:^(NSDictionary *response) {
-            identityStore.identity = response[@"identity"];
-            identityStore.serverGroup = response[@"serverGroup"];
-            
-            onCompletion(identityStore);
-        } onError:onError];
+    [self sendSignedRequestPhase2:request toApiPath:apiPath phase1Response:response forStore:identityStore onCompletion:^(NSDictionary *response) {
+        identityStore.identity = response[@"identity"];
+        identityStore.serverGroup = response[@"serverGroup"];
+        
+        if (identityStore.identity == nil) {
+            onError([ThreemaError threemaError:@"Identity creation failed: server returned no identity"]);
+            return;
+        }
+        
+        onCompletion(identityStore);
     } onError:onError];
+} onError:onError];
 }
 
 - (void)fetchIdentityInfo:(NSString*)identity onCompletion:(void(^)(NSData *publicKey, NSNumber *state, NSNumber *type, NSNumber *featureMask))onCompletion onError:(void(^)(NSError *error))onError {
