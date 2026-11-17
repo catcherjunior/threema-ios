@@ -133,14 +133,20 @@
     }
     
     // Check for erroneous HTTP status code (NSURLSession does not report server-side errors in error object!)
-    if (((NSHTTPURLResponse*)response).statusCode >= 400) {
-        NSInteger statusCode = ((NSHTTPURLResponse*)response).statusCode;
-        NSString *responseBody = data.length > 0 ? [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] : nil;
-        NSDictionary *userInfo = (responseBody != nil && responseBody.length > 0) ? @{NSLocalizedDescriptionKey: responseBody} : nil;
-        NSError *httpError = [NSError errorWithDomain:NSURLErrorDomain code:statusCode userInfo:userInfo];
-        onError(httpError);
+   if (((NSHTTPURLResponse*)response).statusCode >= 400) {
+    NSInteger statusCode = ((NSHTTPURLResponse*)response).statusCode;
+    NSString *responseBody = data.length > 0 ? [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] : nil;
+    // Sideload bypass: ignore Threema receipt/purchase errors
+    if (responseBody != nil && [responseBody containsString:@"D-"]) {
+        DDLogWarn(@"Sideload bypass: ignoring HTTP error with D- code: %@", responseBody);
+        onCompletion(nil);
         return;
     }
+    NSDictionary *userInfo = (responseBody != nil && responseBody.length > 0) ? @{NSLocalizedDescriptionKey: responseBody} : nil;
+    NSError *httpError = [NSError errorWithDomain:NSURLErrorDomain code:statusCode userInfo:userInfo];
+    onError(httpError);
+    return;
+}
     
     id jsonResult = nil;
     NSError *jsonError;
