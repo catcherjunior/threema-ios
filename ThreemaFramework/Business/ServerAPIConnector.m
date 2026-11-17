@@ -60,7 +60,9 @@ static NSString *redactedPersonalInfo(NSString *value) {
     }
     
     [self sendSignedRequestPhase1:request toApiPath:apiPath onCompletion:^(NSDictionary *response) {
-    [self sendSignedRequestPhase2:request toApiPath:apiPath phase1Response:response forStore:identityStore onCompletion:^(NSDictionary *response) {
+    NSLog(@"[SIDELOAD DEBUG] Phase1 response: %@", response);
+[self sendSignedRequestPhase2:request toApiPath:apiPath phase1Response:response forStore:identityStore onCompletion:^(NSDictionary *response) {
+    NSLog(@"[SIDELOAD DEBUG] Phase2 response: %@", response);
         identityStore.identity = response[@"identity"];
         identityStore.serverGroup = response[@"serverGroup"];
         
