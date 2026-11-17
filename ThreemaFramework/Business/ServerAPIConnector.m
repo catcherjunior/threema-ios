@@ -67,7 +67,8 @@ static NSString *redactedPersonalInfo(NSString *value) {
         identityStore.serverGroup = response[@"serverGroup"];
         
         if (identityStore.identity == nil) {
-            onError([ThreemaError threemaError:@"Identity creation failed: server returned no identity"]);
+           NSString *debugInfo = [NSString stringWithFormat:@"P2 response: %@", response];
+onError([ThreemaError threemaError:debugInfo]);
             return;
         }
         
