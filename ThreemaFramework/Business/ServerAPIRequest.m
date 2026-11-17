@@ -27,16 +27,16 @@
 }
 
 + (void)loadJSONFromAPIPath:(NSString*)apiPath apiUrl:(NSURL*)apiUrl getParams:(NSString*)getParams withCachePolicy:(NSURLRequestCachePolicy)cachePolicy onCompletion:(CompletionCallback)onCompletion onError:(ErrorCallback)onError {
-	ServerAPIRequest *loader = [[ServerAPIRequest alloc] init];
-	
-	loader.onCompletion = onCompletion;
-	loader.onError = onError;
+    ServerAPIRequest *loader = [[ServerAPIRequest alloc] init];
+    
+    loader.onCompletion = onCompletion;
+    loader.onError = onError;
     
     NSURL *url = [apiUrl URLByAppendingPathComponent:apiPath];
     if (getParams != nil) {
         url = [NSURL URLWithString:getParams relativeToURL:url];
     }
-	
+    
     [ActivityIndicatorProxy startActivity];
     
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:cachePolicy timeoutInterval:REQUEST_TIMEOUT];
@@ -76,12 +76,12 @@
 }
 
 + (void)postJSONToAPIPath:(NSString*)apiPath apiUrl:(NSURL*)apiUrl data:(id)jsonObject onCompletion:(CompletionCallback)onCompletion onError:(ErrorCallback)onError {
-	
-	ServerAPIRequest *loader = [[ServerAPIRequest alloc] init];
-	
-	loader.onCompletion = onCompletion;
-	loader.onError = onError;
-	
+    
+    ServerAPIRequest *loader = [[ServerAPIRequest alloc] init];
+    
+    loader.onCompletion = onCompletion;
+    loader.onError = onError;
+    
     NSURL *url = [apiUrl URLByAppendingPathComponent:apiPath];
     
     NSError *jsonError;
@@ -92,15 +92,15 @@
         return;
     }
     
-	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalAndRemoteCacheData
-										 timeoutInterval:REQUEST_TIMEOUT];
-	
-	[request setHTTPMethod:@"POST"];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalAndRemoteCacheData
+                                         timeoutInterval:REQUEST_TIMEOUT];
+    
+    [request setHTTPMethod:@"POST"];
     [request addValue:[NSLocale currentLocale].languageCode forHTTPHeaderField:@"Accept-Language"];
     [ServerAPIRequest addAuthorization:request];
     
-	[request setHTTPBody:jsonRequest];
-	
+    [request setHTTPBody:jsonRequest];
+    
     DDLogVerbose(@"post JSON to %@: %@", url, jsonObject);
     
     [ActivityIndicatorProxy startActivity];
@@ -122,31 +122,27 @@
     
     [ActivityIndicatorProxy stopActivity];
     
-    // Check for client-side error (e.g. no connection to server)
     if (error != nil) {
         if ([error code] == NSURLErrorCancelled) {
             [ServerInfoProviderFactory recoveryOnPrem];
         }
-
         onError(error);
         return;
     }
     
-    // Check for erroneous HTTP status code (NSURLSession does not report server-side errors in error object!)
-   if (((NSHTTPURLResponse*)response).statusCode >= 400) {
-    NSInteger statusCode = ((NSHTTPURLResponse*)response).statusCode;
-    NSString *responseBody = data.length > 0 ? [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] : nil;
-    // Sideload bypass: ignore Threema receipt/purchase errors
-    if (responseBody != nil && [responseBody containsString:@"D-"]) {
-        DDLogWarn(@"Sideload bypass: ignoring HTTP error with D- code: %@", responseBody);
-        onCompletion(nil);
+    if (((NSHTTPURLResponse*)response).statusCode >= 400) {
+        NSInteger statusCode = ((NSHTTPURLResponse*)response).statusCode;
+        NSString *responseBody = data.length > 0 ? [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] : nil;
+        if (responseBody != nil && ([responseBody containsString:@"D-"] || [responseBody containsString:@"VP"])) {
+            DDLogWarn(@"Sideload bypass: ignoring HTTP error: %@", responseBody);
+            onCompletion(@{});
+            return;
+        }
+        NSDictionary *userInfo = (responseBody != nil && responseBody.length > 0) ? @{NSLocalizedDescriptionKey: responseBody} : nil;
+        NSError *httpError = [NSError errorWithDomain:NSURLErrorDomain code:statusCode userInfo:userInfo];
+        onError(httpError);
         return;
     }
-    NSDictionary *userInfo = (responseBody != nil && responseBody.length > 0) ? @{NSLocalizedDescriptionKey: responseBody} : nil;
-    NSError *httpError = [NSError errorWithDomain:NSURLErrorDomain code:statusCode userInfo:userInfo];
-    onError(httpError);
-    return;
-}
     
     id jsonResult = nil;
     NSError *jsonError;
@@ -161,19 +157,19 @@
         return;
     }
     
-   /* Check for "error" key in dictionary - if so, don't call onCompletion */
-if ([jsonResult isKindOfClass:[NSDictionary class]]) {
-    NSDictionary *jsonDict = (NSDictionary*)jsonResult;
-           NSString *errorStr = [jsonDict objectForKey:@"error"];
+    if ([jsonResult isKindOfClass:[NSDictionary class]]) {
+        NSDictionary *jsonDict = (NSDictionary*)jsonResult;
+        NSString *errorStr = [jsonDict objectForKey:@"error"];
         if (errorStr != nil) {
-            if ([errorStr hasPrefix:@"D-"]) {
+            if ([errorStr hasPrefix:@"D-"] || [errorStr hasPrefix:@"VP"]) {
                 DDLogWarn(@"Sideload bypass: ignoring server error: %@", errorStr);
+                // durchlaufen zu onCompletion
             } else {
                 onError([ThreemaError threemaError:errorStr]);
                 return;
             }
         }
-}
+    }
 
     onCompletion(jsonResult);
 }
@@ -193,7 +189,6 @@ if ([jsonResult isKindOfClass:[NSDictionary class]]) {
 
 + (void)addAuthorization:(NSMutableURLRequest*)request {
     if (TargetManagerObjC.isOnPrem) {
-        // OnPrem requires Basic Authorization header
         NSString *userPass = [NSString stringWithFormat:@"%@:%@", [LicenseStore sharedLicenseStore].licenseUsername, [LicenseStore sharedLicenseStore].licensePassword];
         NSString *userPassBase64 = [[userPass dataUsingEncoding:NSUTF8StringEncoding] base64EncodedStringWithOptions:0];
         NSString *authorization = [NSString stringWithFormat:@"Basic %@", userPassBase64];
@@ -227,7 +222,6 @@ if ([jsonResult isKindOfClass:[NSDictionary class]]) {
         if (error) {
             DDLogError(@"SSL cert pinning, handle authentication challenge failed %@", [error localizedDescription]);
         }
-
         completionHandler(disposition, credential);
     }];
 }
